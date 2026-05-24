@@ -1,0 +1,22 @@
+# Environment variables — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Go
+backend/vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,26 @@
+# Force LF line endings for all text files
+* text=auto eol=lf
+
+# Explicitly declare Go files as text
+*.go text eol=lf
+
+# Env files
+*.env text eol=lf
+
+# Shell scripts always LF
+*.sh text eol=lf
+
+# Windows batch files use CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — no conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary

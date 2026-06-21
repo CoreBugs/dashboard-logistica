@@ -6,20 +6,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartData, ChartOptions } from 'chart.js';
-import {
-  Chart,
-  BarController,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend,
-} from 'chart.js';
 import { DashboardService, DashboardSummary } from '../../core/services/dashboard.service';
 import { MetricCardComponent } from '../../shared/components/metric-card/metric-card.component';
-import { Order } from '../../core/models/order.model';
-
-Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 @Component({
   selector: 'app-dashboard',
@@ -90,6 +78,19 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
             color="red"
             subtitle="≤ 5 unidades"
           />
+          <app-metric-card
+            title="Facturación total"
+            [value]="totalRevenueFormatted()"
+            icon="payments"
+            color="green"
+          />
+          <app-metric-card
+            title="Facturado entregado"
+            [value]="deliveredRevenueFormatted()"
+            icon="local_shipping"
+            color="purple"
+            [subtitle]="'vs ' + pendingRevenueFormatted() + ' sin entregar'"
+          />
         </div>
 
         <!-- Chart + Recent Orders -->
@@ -141,6 +142,45 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
             }
           </div>
         </div>
+
+        <!-- Orders-based widgets -->
+        <div class="widgets-grid">
+          <!-- Pie Chart: distribución por estado -->
+          <div class="card chart-card">
+            <h2 class="card-title">Distribución de órdenes por estado</h2>
+            <div class="chart-wrapper">
+              <canvas baseChart
+                [data]="statusPieData()"
+                [options]="pieChartOptions"
+                type="pie"
+              ></canvas>
+            </div>
+          </div>
+
+          <!-- Line Chart: órdenes por día -->
+          <div class="card chart-card">
+            <h2 class="card-title">Órdenes creadas por día</h2>
+            <div class="chart-wrapper">
+              <canvas baseChart
+                [data]="ordersByDayData()"
+                [options]="lineChartOptions"
+                type="line"
+              ></canvas>
+            </div>
+          </div>
+
+          <!-- Bar Chart: top 5 productos -->
+          <div class="card chart-card">
+            <h2 class="card-title">Top 5 productos más pedidos</h2>
+            <div class="chart-wrapper">
+              <canvas baseChart
+                [data]="topProductsData()"
+                [options]="topProductsOptions"
+                type="bar"
+              ></canvas>
+            </div>
+          </div>
+        </div>
       }
     </div>
   `,
@@ -168,6 +208,12 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
     .bottom-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .widgets-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
 
@@ -207,8 +253,12 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, L
     .status-badge[data-status="en viaje"]   { background: rgba(128,90,213,0.15); color: #6b46c1; }
     .status-badge[data-status="entregado"]  { background: rgba(56,178,114,0.15); color: #276749; }
 
+    @media (max-width: 1100px) {
+      .widgets-grid { grid-template-columns: 1fr 1fr; }
+    }
     @media (max-width: 900px) {
       .bottom-grid { grid-template-columns: 1fr; }
+      .widgets-grid { grid-template-columns: 1fr; }
     }
   `]
 })
@@ -245,6 +295,125 @@ export class DashboardComponent implements OnInit {
     scales: {
       y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
       x: { grid: { display: false } }
+    }
+  };
+
+  private readonly statusColors = this.readStatusColors();
+
+  private readStatusColors() {
+    const styles = getComputedStyle(document.documentElement);
+    return {
+      pendiente: styles.getPropertyValue('--status-pendiente-fg').trim() || '#f6ad55',
+      enViaje:   styles.getPropertyValue('--status-en-viaje-fg').trim()  || '#805ad5',
+      entregado: styles.getPropertyValue('--status-entregado-fg').trim() || '#38b272',
+    };
+  }
+
+  totalRevenue = computed(() => this.summary()?.orders.reduce((acc, o) => acc + o.total_price, 0) ?? 0);
+  deliveredRevenue = computed(() =>
+    this.summary()?.orders.filter(o => o.status === 'entregado').reduce((acc, o) => acc + o.total_price, 0) ?? 0
+  );
+  pendingRevenue = computed(() => this.totalRevenue() - this.deliveredRevenue());
+
+  totalRevenueFormatted     = computed(() => this.formatCurrency(this.totalRevenue()));
+  deliveredRevenueFormatted = computed(() => this.formatCurrency(this.deliveredRevenue()));
+  pendingRevenueFormatted   = computed(() => this.formatCurrency(this.pendingRevenue()));
+
+  private formatCurrency(value: number): string {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
+  }
+
+  statusPieData = computed<ChartData<'pie'>>(() => {
+    const s = this.summary();
+    return {
+      labels: ['Pendiente', 'En viaje', 'Entregado'],
+      datasets: [
+        {
+          data: s ? [s.pendiente, s.enViaje, s.entregado] : [0, 0, 0],
+          backgroundColor: [this.statusColors.pendiente, this.statusColors.enViaje, this.statusColors.entregado],
+          borderWidth: 0,
+        }
+      ]
+    };
+  });
+
+  pieChartOptions: ChartOptions<'pie'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom' } },
+  };
+
+  ordersByDayData = computed<ChartData<'line'>>(() => {
+    const orders = this.summary()?.orders ?? [];
+    const counts = new Map<string, number>();
+    for (const o of orders) {
+      const day = new Date(o.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+      counts.set(day, (counts.get(day) ?? 0) + 1);
+    }
+    const sortedDays = [...counts.keys()].sort((a, b) => {
+      const [da, ma] = a.split('/').map(Number);
+      const [db, mb] = b.split('/').map(Number);
+      return ma - mb || da - db;
+    });
+    return {
+      labels: sortedDays,
+      datasets: [
+        {
+          label: 'Órdenes',
+          data: sortedDays.map(d => counts.get(d) ?? 0),
+          borderColor: '#4f8ef7',
+          backgroundColor: 'rgba(79,142,247,0.15)',
+          tension: 0.3,
+          fill: true,
+        }
+      ]
+    };
+  });
+
+  lineChartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+      x: { grid: { display: false } }
+    }
+  };
+
+  topProductsData = computed<ChartData<'bar'>>(() => {
+    const orders = this.summary()?.orders ?? [];
+    const products = this.summary()?.products ?? [];
+    const quantityByProduct = new Map<number, number>();
+    for (const o of orders) {
+      quantityByProduct.set(o.product_id, (quantityByProduct.get(o.product_id) ?? 0) + o.quantity);
+    }
+    const top5 = [...quantityByProduct.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    const productName = (id: number) => products.find(p => p.id === id)?.name ?? `Producto #${id}`;
+    return {
+      labels: top5.map(([id]) => productName(id)),
+      datasets: [
+        {
+          label: 'Unidades pedidas',
+          data: top5.map(([, qty]) => qty),
+          backgroundColor: 'rgba(79,142,247,0.8)',
+          borderColor: '#4f8ef7',
+          borderWidth: 1,
+          borderRadius: 6,
+        }
+      ]
+    };
+  });
+
+  topProductsOptions: ChartOptions<'bar'> = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+      y: { grid: { display: false } }
     }
   };
 

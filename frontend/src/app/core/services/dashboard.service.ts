@@ -12,6 +12,8 @@ export interface DashboardSummary {
   totalProducts: number;
   lowStockProducts: number;
   recentOrders: Order[];
+  orders: Order[];
+  products: Product[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -35,6 +37,8 @@ export class DashboardService {
           recentOrders: [...orders]
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 5),
+          orders,
+          products,
         };
         return summary;
       })

@@ -5,7 +5,7 @@
 
 -- Usuarios adicionales
 INSERT INTO users (name, email, password_hash, role) VALUES
-('Admin', 'admin@dashboard.com', '$2a$10$p9x34Ff2YE18Hrf8G3oNSusRF3cepJP2VqlBQhubVKeYIjk94i8ES', 'admin');
+('Admin', 'admin@dashboard.com', '$2a$10$p9x34Ff2YE18Hrf8G3oNSusRF3cepJP2VqlBQhubVKeYIjk94i8ES', 'admin'),
 ('Carlos López',  'carlos@dashboard.com', '$2a$10$p9x34Ff2YE18Hrf8G3oNSusRF3cepJP2VqlBQhubVKeYIjk94i8ES', 'repartidor'),
 ('María González','maria@dashboard.com',  '$2a$10$p9x34Ff2YE18Hrf8G3oNSusRF3cepJP2VqlBQhubVKeYIjk94i8ES', 'repartidor'),
 ('Lucas Pérez',   'lucas@dashboard.com',  '$2a$10$p9x34Ff2YE18Hrf8G3oNSusRF3cepJP2VqlBQhubVKeYIjk94i8ES', 'admin');

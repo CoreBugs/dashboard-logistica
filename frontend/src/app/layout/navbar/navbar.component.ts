@@ -49,7 +49,7 @@ import { AuthService } from '../../core/services/auth.service';
   `]
 })
 export class NavbarComponent {
-  private auth = inject(AuthService);
+  private readonly auth = inject(AuthService);
 
   logout() {
     this.auth.logout();

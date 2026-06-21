@@ -40,7 +40,7 @@ func main() {
 	productRepo := repository.NewProductRepository(db)
 	orderRepo := repository.NewOrderRepository(db)
 
-	authHandler := handler.NewAuthHandler(userRepo, cfg.JWTSecret)
+	authHandler := handler.NewAuthHandler(userRepo, cfg.JWTSecret, cfg.RefreshSecret, cfg.Env)
 	userHandler := handler.NewUserHandler(userRepo)
 	productHandler := handler.NewProductHandler(productRepo)
 	orderHandler := handler.NewOrderHandler(orderRepo, productRepo)
@@ -52,7 +52,7 @@ func main() {
 		AllowedOrigins:   []string{"http://localhost:4200"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 	r.Use(chiMiddleware.SetHeader("Content-Type", "application/json"))
@@ -63,6 +63,8 @@ func main() {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", authHandler.Login)
+		r.Post("/refresh", authHandler.Refresh)
+		r.Post("/logout", authHandler.Logout)
 	})
 
 	r.Route("/api", func(r chi.Router) {

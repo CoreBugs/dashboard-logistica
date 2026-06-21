@@ -1,7 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs/operators';
+import { catchError, of, tap } from 'rxjs';
 
 interface LoginResponse {
   token: string;
@@ -15,14 +15,10 @@ interface LoginResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly TOKEN_KEY = 'auth_token';
-  private readonly USER_KEY = 'auth_user';
   private readonly apiUrl = 'http://localhost:8080';
 
-  private _token = signal<string | null>(localStorage.getItem('auth_token'));
-  private _user = signal<LoginResponse['user'] | null>(
-    JSON.parse(localStorage.getItem('auth_user') ?? 'null')
-  );
+  private _token = signal<string | null>(null);
+  private _user = signal<LoginResponse['user'] | null>(null);
 
   isAuthenticated = computed(() => !!this._token());
   currentUser = computed(() => this._user());
@@ -31,19 +27,40 @@ export class AuthService {
   constructor(private http: HttpClient, private router: Router) {}
 
   login(email: string, password: string) {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { email, password }).pipe(
-      tap(res => {
-        localStorage.setItem(this.TOKEN_KEY, res.token);
-        localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
-        this._token.set(res.token);
-        this._user.set(res.user);
-      })
-    );
+    return this.http
+      .post<LoginResponse>(`${this.apiUrl}/auth/login`, { email, password }, { withCredentials: true })
+      .pipe(
+        tap(res => {
+          this._token.set(res.token);
+          this._user.set(res.user);
+        })
+      );
+  }
+
+  refresh() {
+    return this.http
+      .post<LoginResponse>(`${this.apiUrl}/auth/refresh`, null, { withCredentials: true })
+      .pipe(
+        tap(res => {
+          this._token.set(res.token);
+          this._user.set(res.user);
+        }),
+        catchError(() => {
+          this._token.set(null);
+          this._user.set(null);
+          return of(null);
+        })
+      );
   }
 
   logout() {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
+    this.http.post(`${this.apiUrl}/auth/logout`, null, { withCredentials: true }).subscribe({
+      next: () => this.finishLogout(),
+      error: () => this.finishLogout()
+    });
+  }
+
+  private finishLogout() {
     this._token.set(null);
     this._user.set(null);
     this.router.navigate(['/auth/login']);

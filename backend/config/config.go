@@ -6,24 +6,28 @@ import (
 )
 
 type Config struct {
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	ServerPort string
-	JWTSecret  string
+	DBHost        string
+	DBPort        string
+	DBUser        string
+	DBPassword    string
+	DBName        string
+	ServerPort    string
+	JWTSecret     string
+	RefreshSecret string
+	Env           string
 }
 
 func Load() *Config {
 	return &Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", "dashboard_logistica"),
-		ServerPort: getEnv("SERVER_PORT", "8080"),
-		JWTSecret:  getEnv("JWT_SECRET", "secret"),
+		DBHost:        getEnv("DB_HOST", "localhost"),
+		DBPort:        getEnv("DB_PORT", "5432"),
+		DBUser:        getEnv("DB_USER", "postgres"),
+		DBPassword:    getEnv("DB_PASSWORD", ""),
+		DBName:        getEnv("DB_NAME", "dashboard_logistica"),
+		ServerPort:    getEnv("SERVER_PORT", "8080"),
+		JWTSecret:     getEnv("JWT_SECRET", "secret"),
+		RefreshSecret: getEnv("REFRESH_SECRET", "refresh-secret-dev"),
+		Env:           getEnv("APP_ENV", "development"),
 	}
 }
 

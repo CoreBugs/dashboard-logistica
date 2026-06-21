@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -24,7 +25,7 @@ import { MatMenuModule } from '@angular/material/menu';
             <mat-icon>person</mat-icon>
             <span>Perfil</span>
           </button>
-          <button mat-menu-item>
+          <button mat-menu-item (click)="logout()">
             <mat-icon>logout</mat-icon>
             <span>Cerrar sesión</span>
           </button>
@@ -47,4 +48,10 @@ import { MatMenuModule } from '@angular/material/menu';
     .navbar-right { display: flex; align-items: center; gap: 8px; }
   `]
 })
-export class NavbarComponent {}
+export class NavbarComponent {
+  private auth = inject(AuthService);
+
+  logout() {
+    this.auth.logout();
+  }
+}

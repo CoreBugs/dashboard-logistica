@@ -20,3 +20,10 @@ backend/vendor/
 # OS
 .DS_Store
 Thumbs.db
+
+# Docs de trabajo locales (no se suben al repo)
+estado-proyecto-frontend.md
+frontend-standard.md
+PROGRESS_FRONTEND.md
+coordinacion-orders.md
+orders.Md

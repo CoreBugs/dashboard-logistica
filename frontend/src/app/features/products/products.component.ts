@@ -1,7 +1,5 @@
 import { Component, inject, signal, computed, OnInit, Inject } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -9,13 +7,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogModule, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatSortModule, Sort } from '@angular/material/sort';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 
 import { ProductService } from '../../core/services/product.service';
 import { MetricCardComponent } from '../../shared/components/metric-card/metric-card.component';
+import { DataTableComponent, DataTableCellDirective, TableColumn, TableAction } from '../../shared/components/data-table/data-table.component';
 import { Product, CreateProductRequest, UpdateProductRequest } from '../../core/models/product.model';
 
 // ─────────────────────────────────────────────
@@ -154,20 +150,17 @@ export class ConfirmDialogComponent {
   selector: 'app-products',
   standalone: true,
   imports: [
-    CurrencyPipe,
     ReactiveFormsModule,
-    MatTableModule,
     MatButtonModule,
     MatIconModule,
     MatInputModule,
     MatFormFieldModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatTooltipModule,
     MatChipsModule,
-    MatSortModule,
-    MatPaginatorModule,
     MetricCardComponent,
+    DataTableComponent,
+    DataTableCellDirective,
   ],
   template: `
     <div class="products-page">
@@ -200,75 +193,31 @@ export class ConfirmDialogComponent {
             <input matInput [value]="searchTerm()"
                    (input)="onSearch($any($event.target).value)" />
           </mat-form-field>
-          <span class="results-count">{{ sortedProducts().length }} resultado(s)</span>
+          <span class="results-count">{{ filteredProducts().length }} resultado(s)</span>
         </div>
 
-        @if (loading()) {
-          <div class="loading-center">
-            <mat-spinner diameter="40" />
-          </div>
-        } @else if (sortedProducts().length === 0) {
-          <div class="empty-state">
-            <mat-icon>inventory_2</mat-icon>
-            <p>{{ searchTerm() ? 'Sin resultados para "' + searchTerm() + '"' : 'No hay productos cargados' }}</p>
-          </div>
-        } @else {
-          <table mat-table [dataSource]="pagedProducts()" matSort
-                 (matSortChange)="sort($event)" class="products-table">
-
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
-              <td mat-cell *matCellDef="let p">
-                <span class="product-name">{{ p.name }}</span>
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="sku">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>SKU</th>
-              <td mat-cell *matCellDef="let p">
-                <span class="sku-badge">{{ p.sku }}</span>
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="stock">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Stock</th>
-              <td mat-cell *matCellDef="let p">
-                <span class="stock-badge" [attr.data-level]="stockLevel(p.stock)">
-                  {{ p.stock }} u.
-                </span>
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="price">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Precio</th>
-              <td mat-cell *matCellDef="let p">{{ p.price | currency:'ARS':'symbol':'1.2-2' }}</td>
-            </ng-container>
-
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef></th>
-              <td mat-cell *matCellDef="let p" class="actions-cell">
-                <button mat-icon-button matTooltip="Editar" (click)="openEdit(p)">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button matTooltip="Eliminar" class="delete-btn" (click)="openDelete(p)">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="columns"></tr>
-            <tr mat-row *matRowDef="let row; columns: columns;" class="product-row"></tr>
-          </table>
-
-          <mat-paginator
-            [length]="sortedProducts().length"
-            [pageSize]="pageSize()"
-            [pageIndex]="pageIndex()"
-            [pageSizeOptions]="[10, 50, 100]"
-            (page)="onPage($event)"
-            showFirstLastButtons
-          />
-        }
+        <app-data-table
+          [data]="filteredProducts()"
+          [columns]="columns"
+          [loading]="loading()"
+          [actions]="rowActions"
+          [pageSizeOptions]="[10, 50, 100]"
+          emptyMessage="No hay productos cargados"
+          emptyIcon="inventory_2"
+          (actionClick)="onActionClick($event)"
+        >
+          <ng-template appDataTableCell="name" let-p>
+            <span class="product-name">{{ p.name }}</span>
+          </ng-template>
+          <ng-template appDataTableCell="sku" let-p>
+            <span class="sku-badge">{{ p.sku }}</span>
+          </ng-template>
+          <ng-template appDataTableCell="stock" let-p>
+            <span class="stock-badge" [attr.data-level]="stockLevel(p.stock)">
+              {{ p.stock }} u.
+            </span>
+          </ng-template>
+        </app-data-table>
       </div>
     </div>
   `,
@@ -302,18 +251,6 @@ export class ConfirmDialogComponent {
     .search-field { flex: 1; min-width: 240px; }
     .results-count { font-size: 13px; color: #718096; white-space: nowrap; }
 
-    .loading-center { display: flex; justify-content: center; padding: 48px; }
-
-    .empty-state {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 8px; padding: 48px; color: #a0aec0; text-align: center;
-    }
-    .empty-state mat-icon { font-size: 36px; width: 36px; height: 36px; }
-    .empty-state p { margin: 0; font-size: 14px; }
-
-    .products-table { width: 100%; }
-    .products-table th { font-size: 12px; color: #718096; font-weight: 600; }
-
     .product-name { font-weight: 500; color: #1a1f36; }
 
     .sku-badge {
@@ -332,16 +269,6 @@ export class ConfirmDialogComponent {
     .stock-badge[data-level="ok"]  { background: rgba(56,178,114,0.12); color: #276749; }
     .stock-badge[data-level="low"] { background: rgba(246,173,85,0.12); color: #c97a0a; }
     .stock-badge[data-level="out"] { background: rgba(229,62,62,0.12);  color: #c53030; }
-
-    .actions-cell { text-align: right; white-space: nowrap; }
-    .delete-btn { color: #e53e3e; }
-
-    .product-row:hover { background: #f7fafc; }
-
-    mat-paginator {
-      border-top: 1px solid #e2e8f0;
-      margin-top: 4px;
-    }
   `]
 })
 export class ProductsComponent implements OnInit {
@@ -349,45 +276,28 @@ export class ProductsComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
-  columns = ['name', 'sku', 'stock', 'price', 'actions'];
+  columns: TableColumn<Product>[] = [
+    { key: 'name',  header: 'Nombre', type: 'custom', sortable: true },
+    { key: 'sku',   header: 'SKU',    type: 'custom', sortable: true },
+    { key: 'stock', header: 'Stock',  type: 'custom', sortable: true },
+    { key: 'price', header: 'Precio', type: 'currency', sortable: true },
+  ];
+
+  rowActions: TableAction[] = [
+    { icon: 'edit',   label: 'Editar',    action: 'edit' },
+    { icon: 'delete', label: 'Eliminar',  action: 'delete' },
+  ];
 
   loading = signal(true);
   products = signal<Product[]>([]);
-  searchTerm    = signal('');
-  sortColumn    = signal<keyof Product | ''>('');
-  sortDirection = signal<'asc' | 'desc' | ''>('');
-  pageSize      = signal(10);
-  pageIndex     = signal(0);
+  searchTerm = signal('');
 
-  /** Filter + sort (sin paginar) — usado para el total del paginator */
-  sortedProducts = computed(() => {
+  filteredProducts = computed(() => {
     const term = this.searchTerm().toLowerCase().trim();
-    const col  = this.sortColumn();
-    const dir  = this.sortDirection();
-
-    let list = term
-      ? this.products().filter(
-          p => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term)
-        )
-      : [...this.products()];
-
-    if (col && dir) {
-      list = [...list].sort((a, b) => {
-        const va = a[col as keyof Product];
-        const vb = b[col as keyof Product];
-        const cmp = typeof va === 'string'
-          ? (va as string).localeCompare(vb as string, 'es', { sensitivity: 'base' })
-          : (va as number) - (vb as number);
-        return dir === 'asc' ? cmp : -cmp;
-      });
-    }
-    return list;
-  });
-
-  /** Slice paginado — lo que va a la tabla */
-  pagedProducts = computed(() => {
-    const start = this.pageIndex() * this.pageSize();
-    return this.sortedProducts().slice(start, start + this.pageSize());
+    if (!term) return this.products();
+    return this.products().filter(
+      p => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term)
+    );
   });
 
   totalProducts  = computed(() => this.products().length);
@@ -407,24 +317,17 @@ export class ProductsComponent implements OnInit {
 
   onSearch(term: string) {
     this.searchTerm.set(term);
-    this.pageIndex.set(0);   // volver a página 1 al buscar
-  }
-
-  sort(event: Sort) {
-    this.sortColumn.set(event.active as keyof Product);
-    this.sortDirection.set(event.direction as 'asc' | 'desc' | '');
-    this.pageIndex.set(0);   // volver a página 1 al ordenar
-  }
-
-  onPage(event: PageEvent) {
-    this.pageSize.set(event.pageSize);
-    this.pageIndex.set(event.pageIndex);
   }
 
   stockLevel(stock: number): 'ok' | 'low' | 'out' {
     if (stock === 0) return 'out';
     if (stock <= 5)  return 'low';
     return 'ok';
+  }
+
+  onActionClick(event: { action: string; row: Product }) {
+    if (event.action === 'edit') this.openEdit(event.row);
+    if (event.action === 'delete') this.openDelete(event.row);
   }
 
   ngOnInit() {

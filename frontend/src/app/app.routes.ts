@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 
 export const routes: Routes = [
@@ -26,6 +27,8 @@ export const routes: Routes = [
       },
       {
         path: 'users',
+        canActivate: [roleGuard],
+        data: { roles: ['admin'] },
         loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }

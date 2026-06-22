@@ -35,3 +35,25 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+func RequireRole(allowedRoles ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := r.Context().Value(ClaimsKey).(jwt.MapClaims)
+			if !ok {
+				http.Error(w, `{"error":"token inválido"}`, http.StatusUnauthorized)
+				return
+			}
+
+			role, _ := claims["role"].(string)
+			for _, allowed := range allowedRoles {
+				if role == allowed {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			http.Error(w, `{"error":"no tenés permisos para realizar esta acción"}`, http.StatusForbidden)
+		})
+	}
+}

@@ -71,6 +71,7 @@ func main() {
 		r.Use(middleware.Auth(cfg.JWTSecret))
 
 		r.Route("/users", func(r chi.Router) {
+			r.Use(middleware.RequireRole("admin"))
 			r.Get("/", userHandler.GetAll)
 			r.Post("/", userHandler.Create)
 			r.Get("/{id}", userHandler.GetByID)

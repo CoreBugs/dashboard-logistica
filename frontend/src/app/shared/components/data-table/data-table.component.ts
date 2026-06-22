@@ -90,7 +90,9 @@ export class DataTableCellDirective<T = any> {
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row" class="actions-cell">
             @for (a of actions(); track a.action) {
-              <button mat-icon-button [matTooltip]="a.label" (click)="actionClick.emit({ action: a.action, row })">
+              <button mat-icon-button [matTooltip]="a.label"
+                      [disabled]="isActionDisabled()(a.action, row)"
+                      (click)="actionClick.emit({ action: a.action, row })">
                 <mat-icon>{{ a.icon }}</mat-icon>
               </button>
             }
@@ -151,6 +153,7 @@ export class DataTableComponent<T extends Record<string, any>> {
   loading = input(false);
   pageSizeOptions = input<number[]>([5, 10, 25, 50]);
   actions = input<TableAction[]>([]);
+  isActionDisabled = input<(action: string, row: T) => boolean>(() => false);
   emptyMessage = input('No hay datos cargados');
   emptyIcon = input('inbox');
 

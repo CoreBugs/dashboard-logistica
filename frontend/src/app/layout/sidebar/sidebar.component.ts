@@ -1,13 +1,15 @@
-import { Component, signal, output } from '@angular/core';
+import { Component, inject, signal, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AuthService } from '../../core/services/auth.service';
 
 interface NavItem {
   label: string;
   icon: string;
   route: string;
+  adminOnly?: boolean;
 }
 
 @Component({
@@ -28,19 +30,21 @@ interface NavItem {
       <!-- Nav items -->
       <nav class="sidebar-nav">
         @for (item of navItems; track item.route) {
-          <a
-            class="nav-item"
-            matRipple
-            [routerLink]="item.route"
-            routerLinkActive="active"
-            [matTooltip]="collapsed() ? item.label : ''"
-            matTooltipPosition="right"
-          >
-            <mat-icon>{{ item.icon }}</mat-icon>
-            @if (!collapsed()) {
-              <span>{{ item.label }}</span>
-            }
-          </a>
+          @if (!item.adminOnly || isAdmin()) {
+            <a
+              class="nav-item"
+              matRipple
+              [routerLink]="item.route"
+              routerLinkActive="active"
+              [matTooltip]="collapsed() ? item.label : ''"
+              matTooltipPosition="right"
+            >
+              <mat-icon>{{ item.icon }}</mat-icon>
+              @if (!collapsed()) {
+                <span>{{ item.label }}</span>
+              }
+            </a>
+          }
         }
       </nav>
 
@@ -214,14 +218,18 @@ interface NavItem {
   `]
 })
 export class SidebarComponent {
+  private readonly auth = inject(AuthService);
+
   collapsed = signal(false);
   collapsedChange = output<boolean>();
+
+  isAdmin = () => this.auth.currentUser()?.role === 'admin';
 
   navItems: NavItem[] = [
     { label: 'Dashboard', icon: 'dashboard',      route: '/dashboard' },
     { label: 'Productos', icon: 'inventory_2',    route: '/products'  },
     { label: 'Órdenes',   icon: 'receipt_long',   route: '/orders'    },
-    { label: 'Usuarios',  icon: 'group',          route: '/users'     },
+    { label: 'Usuarios',  icon: 'group',          route: '/users', adminOnly: true },
   ];
 
   toggle() {
